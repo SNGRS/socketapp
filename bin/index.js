@@ -1,29 +1,15 @@
 #!/usr/bin/env node
 
-
-/* --------------------------
-* TODO *
-- Controleer of dotenv-printers ook beschikbaar zijn in de lijst
-
-- Condities regelen kassalade openen hoe - welke functie
-- Console.log verbeteren
-
-
-
--------------------------- */
-
-///// DEPENDENCIES
 require("dotenv").config();
 const chalk = require("chalk");
 const boxen = require("boxen");
 
 const { WebSocketServer } = require("ws");
 const SerialPort = require('serialport');
-const { getPrinters } = require("pdf-to-printer");
+const { print, getPrinters } = require("pdf-to-printer");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
 const puppeteer = require("puppeteer");
-const { print } = require("pdf-to-printer");
 const { exec } = require('child_process');
 
 const wss = new WebSocketServer({ port: 3636 });
@@ -37,31 +23,7 @@ wss.on("connection", function connection(ws) {
     if (data.toString('utf8') === "openKassalade") {
       openKassalade();
     } else {
-      console.log("Zooi ontvangen");
-      ws.send(JSON.stringify([0, "Transactie verwerken"]));
-
-      try {
-        var file = await opslaanHTML(data);
-        ws.send(JSON.stringify([0.3, "Transactie verwerken"]));
-        await createPDF(file);
-
-        ws.send(JSON.stringify([0.8, "Kassabon printen"]));
-        await print("transacties/kassabonnen/" + file + ".pdf", {
-          printer: process.env.KASSABON_PRINTER,
-        });
-
-        ws.send(JSON.stringify([0.9, "Pakbon printen"]));
-        await print("transacties/pakbonnen/" + file + ".pdf", {
-          printer: process.env.PAKBON_PRINTER,
-        });
-
-        console.log("received: %s", file);
-        ws.send(JSON.stringify([1, "Transactie verwerkt"]));
-        ws.send("OK")
-      } catch (error) {
-        console.error("Fout bij verwerken van bericht:", error);
-        // Hier kun je eventueel een foutreactie naar de client sturen.
-      }
+      await verwerkTransactie(data, ws)
     }
   });
 
@@ -85,6 +47,27 @@ console.log(msgBox);
 
 getPrinters().then(console.log);
 
+let browser;
+browser = puppeteer.launch({ headless: "new" }).then(
+  console.log("Puppeteer ook gestart")
+)
+
+async function verwerkTransactie(data, ws) {
+  console.log("Zooi ontvangen");
+  ws.send(JSON.stringify([0, "Transactie verwerken"]));
+
+  try {
+    var file = await opslaanHTML(data);
+    ws.send(JSON.stringify([0.3, "Transactie verwerken"]));
+    await createPDF(file, ws);
+    console.log("received: %s", file);
+    ws.send(JSON.stringify([1, "Transactie verwerkt"]));
+    ws.send("OK")
+  } catch (error) {
+    console.error("Fout bij verwerken van bericht:", error);
+    // Hier kun je eventueel een foutreactie naar de client sturen.
+  }
+}
 
 function openKassalade() {
   exec('OpenLade.exe', (error, stdout, stderr) => {
@@ -110,12 +93,13 @@ async function opslaanHTML(html) {
   return uuid;
 }
 
-async function createPDF(file) {
-  const browser = await puppeteer.launch({ headless: "new" });
+async function createPDF(file, ws) {
+  ws.send(JSON.stringify([0.4, "Transactie verwerken"]));
   const page = await browser.newPage();
   const html = fs.readFileSync("transacties/html/" + file + ".html", "utf-8");
   await page.setContent(html, { waitUntil: "domcontentloaded" });
   await page.emulateMediaType("print");
+  ws.send(JSON.stringify([0.6, "Transactie verwerken"]));
 
   const kassabon = await page.pdf({
     path: "transacties/kassabonnen/" + file + ".pdf",
@@ -125,6 +109,13 @@ async function createPDF(file) {
     width: "80mm",
     height: "549mm",
   });
+
+  ws.send(JSON.stringify([0.7, "Kassabon printen"]));
+  await print("transacties/kassabonnen/" + file + ".pdf", {
+    printer: process.env.KASSABON_PRINTER
+  });
+
+  ws.send(JSON.stringify([0.8, "Pakbon printen"]));
   const pakbon = await page.pdf({
     path: "transacties/pakbonnen/" + file + ".pdf",
     margin: { top: "100px", right: "10px", bottom: "100px", left: "10px" },
@@ -132,5 +123,8 @@ async function createPDF(file) {
     format: "A4",
   });
 
-  await browser.close();
+  ws.send(JSON.stringify([0.9, "Pakbon printen"]));
+  await print("transacties/pakbonnen/" + file + ".pdf", { printer: process.env.PAKBON_PRINTER})
+
+  await page.close();
 }

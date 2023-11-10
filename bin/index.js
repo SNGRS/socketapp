@@ -47,10 +47,24 @@ console.log(msgBox);
 
 getPrinters().then(console.log);
 
-let browser;
-browser = puppeteer.launch({ headless: "new" }).then(
-  console.log("Puppeteer ook gestart")
-)
+let browserPromise;
+
+// Functie om de browser te starten
+async function startBrowser() {
+  const browser = await puppeteer.launch({ headless: "new" });
+  console.log("Puppeteer ook gestart");
+  return browser;
+}
+
+// Functie om de browser-instantie op te halen
+async function getBrowser() {
+  if (!browserPromise) {
+    browserPromise = startBrowser();
+  }
+  return browserPromise;
+}
+
+getBrowser()
 
 async function verwerkTransactie(data, ws) {
   console.log("Zooi ontvangen");
@@ -59,7 +73,8 @@ async function verwerkTransactie(data, ws) {
   try {
     var file = await opslaanHTML(data);
     ws.send(JSON.stringify([0.3, "Transactie verwerken"]));
-    await createPDF(file, ws);
+    const browser = await getBrowser();
+    await createPDF(file, ws, browser);
     console.log("received: %s", file);
     ws.send(JSON.stringify([1, "Transactie verwerkt"]));
     ws.send("OK")
@@ -93,7 +108,7 @@ async function opslaanHTML(html) {
   return uuid;
 }
 
-async function createPDF(file, ws) {
+async function createPDF(file, ws, browser) {
   ws.send(JSON.stringify([0.4, "Transactie verwerken"]));
   const page = await browser.newPage();
   const html = fs.readFileSync("transacties/html/" + file + ".html", "utf-8");

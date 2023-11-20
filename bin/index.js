@@ -1,22 +1,9 @@
 #!/usr/bin/env node
 
-/*
-
-- Controle of printers bestaan - Indien niet, error
-- Testprintje sturen - bij error afkappen
-- Puppeteer starten
-- Websocket open
-
-*/
-
-
-
-
 require("dotenv").config();
 const chalk = require("chalk");
 const boxen = require("boxen");
 const { WebSocketServer } = require("ws");
-const SerialPort = require('serialport');
 const { print, getPrinters } = require("pdf-to-printer");
 const fs = require("fs").promises;  // Gebruik de promisified versie van fs voor asynchrone operaties
 const { v4: uuidv4 } = require("uuid");
@@ -24,42 +11,6 @@ const puppeteer = require("puppeteer");
 const { exec } = require('child_process');
 
 const wss = new WebSocketServer({ port: 3636 });
-
-const greeting = chalk.white.bold(
-  "Poort 3636 is er klaar voor!"
-);
-
-const boxenOptions = {
-  padding: 1,
-  margin: 1,
-  borderStyle: "round",
-  borderColor: "green",
-  backgroundColor: "#555555",
-};
-const msgBox = boxen(greeting, boxenOptions);
-
-console.log(msgBox);
-
-getPrinters().then(console.log);
-
-let browserPromise;
-
-// Functie om de browser te starten
-async function startBrowser() {
-  const browser = await puppeteer.launch({ headless: "new" });
-  console.log("Puppeteer ook gestart");
-  return browser;
-}
-
-// Functie om de browser-instantie op te halen
-async function getBrowser() {
-  if (!browserPromise) {
-    browserPromise = startBrowser();
-  }
-  return browserPromise;
-}
-
-getBrowser();
 
 wss.on("connection", function connection(ws) {
   ws.on("error", console.error);
@@ -76,6 +27,21 @@ wss.on("connection", function connection(ws) {
 
   ws.send(JSON.stringify(true));
 });
+
+let browserPromise;
+
+async function startBrowser() {
+  const browser = await puppeteer.launch({ headless: "new" });
+  console.log("Puppeteer ook gestart");
+  return browser;
+}
+
+async function getBrowser() {
+  if (!browserPromise) {
+    browserPromise = startBrowser();
+  }
+  return browserPromise;
+}
 
 async function verwerkTransactie(data, ws) {
   console.log("Zooi ontvangen");
@@ -164,3 +130,63 @@ async function createPDF(file, ws, browser) {
     // Hier kun je eventueel een foutreactie naar de client sturen.
   }
 }
+
+async function checkAndPrint() {
+  const pakbonPrinterName = process.env.PAKBON_PRINTER;
+  const kassabonPrinterName = process.env.KASSABON_PRINTER;
+
+  try {
+    const printers = await getPrinters(); // aanname: getPrinters retourneert een Promise
+
+    const pakbonPrinterExists = printers.some(printer => printer.name === pakbonPrinterName);
+    const kassabonPrinterExists = printers.some(printer => printer.name === kassabonPrinterName);
+
+    if (!pakbonPrinterExists || !kassabonPrinterExists) {
+      const missingPrinters = [];
+      if (!pakbonPrinterExists) {
+        missingPrinters.push(pakbonPrinterName);
+      }
+      if (!kassabonPrinterExists) {
+        missingPrinters.push(kassabonPrinterName);
+      }
+      throw new Error(`De volgende printers bestaan niet: ${missingPrinters.join(', ')}`);
+    }
+
+    // Voer de printfuncties uit als beide printers bestaan
+    await print("startup.pdf", {
+      printer: process.env.KASSABON_PRINTER,
+    });
+
+    await print("startup.pdf", {
+      printer: process.env.PAKBON_PRINTER,
+    });
+
+    console.log('Beide printers bestaan en printfuncties zijn succesvol uitgevoerd.');
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1); // Stop het script met een foutstatus
+  }
+}
+
+async function run() {
+  await checkAndPrint();
+  await getBrowser();
+
+  const greeting = chalk.white.bold(
+    "Poort 3636 is er klaar voor!"
+  );
+  
+  const boxenOptions = {
+    padding: 1,
+    margin: 1,
+    borderStyle: "round",
+    borderColor: "green",
+    backgroundColor: "#555555",
+  };
+  const msgBox = boxen(greeting, boxenOptions);
+  
+  console.log(msgBox);
+}
+
+// Start de uitvoering
+run();

@@ -1,29 +1,24 @@
 {
   "name": "socketapp",
   "version": "1.0.0",
-  "description": "",
   "main": "bin/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "post@sngrs.com",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.6.0",
     "boxen": "4.0",
     "chalk": "2.4",
     "dotenv": "^16.3.1",
-    "escpos": "^3.0.0-alpha.6",
-    "escpos-usb": "^3.0.0-alpha.4",
     "pdf-to-printer": "^5.6.0",
     "puppeteer": "^21.4.1",
-    "serialport": "^12.0.0",
-    "socket.io": "^4.7.2",
-    "socket.io-client": "^4.7.2",
     "uuid": "^9.0.1",
     "ws": "^8.14.2"
   },
   "bin": {
-    "hello": "./bin/index.js"
-  }
+    "hello": "bin/index.js"
+  },
+  "devDependencies": {},
+  "description": "Socket voor de GBV WECO KASSA | PLUS extensie voor Google Chrome"
 }

@@ -17,7 +17,6 @@ wss.on("connection", function connection(ws) {
   ws.on("error", console.error);
 
   ws.on("message", async function message(data) {
-    //console.log(data.toString('utf8'));
     console.log("\n")
 
     if (data.toString('utf8') === "openKassalade") {
@@ -26,7 +25,6 @@ wss.on("connection", function connection(ws) {
       await verwerkTransactie(data, ws);
     }
 
-    
   });
 
   ws.send(JSON.stringify(true));
@@ -34,7 +32,6 @@ wss.on("connection", function connection(ws) {
 
 async function startBrowser() {
   const browser = await puppeteer.launch({ headless: "new" });
-  //console.log("Puppeteer ook gestart");
   console.log( chalk.bgGreen("BROWSER") + "\t Achtergrondhelper gestart" )
   return browser;
 }
@@ -48,7 +45,6 @@ async function getBrowser() {
 }
 
 async function verwerkTransactie(data, ws) {
-  //console.log("Zooi ontvangen");
   console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Transactie ontvangen" )
   ws.send(JSON.stringify([0, "Transactie verwerken"]));
 
@@ -57,24 +53,19 @@ async function verwerkTransactie(data, ws) {
     ws.send(JSON.stringify([0.3, "Transactie verwerken"]));
     const browser = await getBrowser();
     await createPDF(file, ws, browser);
-    //console.log("received:", file);
     ws.send(JSON.stringify([1, "Transactie verwerkt"]));
     ws.send("OK");
   } catch (error) {
-    //console.error("Fout bij verwerken van bericht:", error);
     console.log( chalk.bgRed("TRANSACTIE") + "\t Fout bij verwerken van bericht:" + error )
-    // Hier kun je eventueel een foutreactie naar de client sturen.
   }
 }
 
 function openKassalade() {
-  exec('OpenLade.exe', (error, stdout, stderr) => {
+  exec('bin/OpenLade.exe', (error, stdout, stderr) => {
     if (error) {
-      //console.error(`OpenLade.exe: ${error}`);
       console.log( chalk.bgRed("KASSALADE") + `\t ${error}` )
       return;
     }
-    //console.log('OpenLade.exe is gestart');
     console.log( chalk.bgWhite.black("KASSALADE") + "\t Kassalade geopend" )
   });
 }
@@ -85,10 +76,8 @@ async function opslaanHTML(html) {
 
   try {
     await fs.writeFile(filePath, html);
-    //console.log("File written successfully\n");
     console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Transactie opgeslagen als " + uuid )
   } catch (err) {
-    //console.error(err);
     console.log( chalk.bgRed("TRANSACTIE") + "\t Fout bij opslaan van transactie: " + err )
   }
 
@@ -124,6 +113,7 @@ async function createPDF(file, ws, browser) {
     console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Kassabon printen" )
     await print(pdfPath, {
       printer: process.env.KASSABON_PRINTER,
+      scale: process.env.KASSABON_SCALINGs
     });
     console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Kassabon geprint" )
 
@@ -145,7 +135,6 @@ async function createPDF(file, ws, browser) {
     await page.close();
   } catch (error) {
     console.log( chalk.bgRed("TRANSACTIE") + "\t Fout bij maken/printen PDF: " + err )
-    // Hier kun je eventueel een foutreactie naar de client sturen.
   }
 }
 
@@ -154,7 +143,7 @@ async function checkAndPrint() {
   const kassabonPrinterName = process.env.KASSABON_PRINTER;
 
   try {
-    const printers = await getPrinters(); // aanname: getPrinters retourneert een Promise
+    const printers = await getPrinters();
 
     const pakbonPrinterExists = printers.some(printer => printer.name === pakbonPrinterName);
     const kassabonPrinterExists = printers.some(printer => printer.name === kassabonPrinterName);
@@ -170,13 +159,13 @@ async function checkAndPrint() {
       throw new Error(`De volgende printers bestaan niet: ${missingPrinters.join(', ')}`);
     }
 
-    // Voer de printfuncties uit als beide printers bestaan
-    await print("startup.pdf", {
+    await print("bin/startup.pdf", {
       printer: process.env.KASSABON_PRINTER,
+      scale: process.env.KASSABON_SCALING
     });
     console.log( chalk.bgGreen("PRINTER") + "\t Kassabonprinter gestart" )
 
-    await print("startup.pdf", {
+    await print("bin/startup.pdf", {
       printer: process.env.PAKBON_PRINTER,
     });
     console.log( chalk.bgGreen("PRINTER") + "\t Pakbonprinter gestart" )

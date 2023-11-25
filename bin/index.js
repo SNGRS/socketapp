@@ -185,7 +185,7 @@ async function run() {
   await checkAndPrint();
   await getBrowser();
 
-  console.log( boxen("App is opgestart. Goede verkoop!", { backgroundColor: 'green', padding: {top: 1, bottom: 1} }) )
+  console.log( boxen("Socketapp is gestart. Je kan nu de kassa openen. Goede verkoop!", { backgroundColor: 'green', padding: {top: 1, bottom: 1} }) )
   console.log("-----------------------------------")
 }
 

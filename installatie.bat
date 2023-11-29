@@ -1,6 +1,30 @@
 @echo off
 setlocal enabledelayedexpansion
 
+rem Het pad van de map waarin het batch-bestand zich bevindt
+set "scriptDir=%~dp0"
+
+rem Het pad naar de 'transacties'-map
+set "rootDir=%scriptDir%transacties"
+
+if not exist "%rootDir%" (
+    mkdir "%rootDir%"
+    echo De map 'transacties' is aangemaakt.
+)
+
+cd "%rootDir%"
+
+for %%d in (html pakbonnen kassabonnen) do (
+    if not exist "%%d" (
+        mkdir "%%d"
+        echo De map '%%d' is aangemaakt.
+    )
+)
+
+echo Controle en aanmaak voltooid.
+pause
+
+
 rem Controleer of Node.js is geïnstalleerd
 where node >nul 2>nul
 if %errorlevel% neq 0 (

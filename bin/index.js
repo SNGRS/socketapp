@@ -61,7 +61,7 @@ async function verwerkTransactie(data, ws) {
 }
 
 function openKassalade() {
-  exec('bin/OpenLade.exe', (error, stdout, stderr) => {
+  exec('OpenLade.exe', (error, stdout, stderr) => {
     if (error) {
       console.log( chalk.bgRed("KASSALADE") + `\t ${error}` )
       return;
@@ -113,7 +113,7 @@ async function createPDF(file, ws, browser) {
     console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Kassabon printen" )
     await print(pdfPath, {
       printer: process.env.KASSABON_PRINTER,
-      scale: process.env.KASSABON_SCALINGs
+      scale: process.env.KASSABON_SCALING
     });
     console.log( chalk.bgWhite.black("TRANSACTIE") + "\t Kassabon geprint" )
 
